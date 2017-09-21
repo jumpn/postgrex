@@ -41,47 +41,37 @@ defmodule Postgrex.Types do
     end
   end
 
-  @doc false
-  @spec bootstrap_query({pos_integer, non_neg_integer, non_neg_integer}, state) :: binary
-  def bootstrap_query(version, {_, table}) do
-    oids = :ets.select(table, [{{:"$1", :_, :_}, [], [:"$1"]}])
+ @doc false
+ @spec bootstrap_query({pos_integer, non_neg_integer, non_neg_integer}, state) :: binary
+ def bootstrap_query(version, {_, table}) do
+   oids = :ets.select(table, [{{:"$1", :_, :_}, [], [:"$1"]}])
 
-    {rngsubtype, join_range} =
-      if version >= {9, 2, 0} do
-        {"coalesce(r.rngsubtype, 0)",
-         "LEFT JOIN pg_range AS r ON r.rngtypid = t.oid"}
-      else
-        {"0", ""}
-      end
+   {rngsubtype, join_range} =
+     if version >= {9, 2, 0} do
+       {"coalesce(r.rngsubtype, 0)",
+        "LEFT JOIN pg_range AS r ON r.rngtypid = t.oid OR (t.typbasetype <> 0 AND r.rngtypid = t.typbasetype)"}
+     else
+       {"0", ""}
+     end
 
-    filter_oids =
-      case oids do
-        [] ->
-          ""
-        _  ->
-          # equiv to `WHERE t.oid NOT IN (SELECT unnest(ARRAY[#{Enum.join(oids, ",")}]))`
-          # `unnest` is not supported in redshift or postgres version prior to 8.4
-          """
-          WHERE t.oid NOT IN (
-            SELECT (ARRAY[#{Enum.join(oids, ",")}])[i]
-            FROM generate_series(1, #{length(oids)}) AS i
-          )
-          """
-      end
+   filter_oids =
+     case oids do
+       [] ->
+         ""
+       _  ->
+         "WHERE t.oid::INT NOT IN (SELECT unnest(ARRAY[#{Enum.join(oids, ",")}]))"
+     end
 
-    """
-    SELECT t.oid, t.typname, t.typsend, t.typreceive, t.typoutput, t.typinput,
-           t.typelem, #{rngsubtype}, ARRAY (
-      SELECT a.atttypid
-      FROM pg_attribute AS a
-      WHERE a.attrelid = t.typrelid AND a.attnum > 0 AND NOT a.attisdropped
-      ORDER BY a.attnum
-    )
-    FROM pg_type AS t
-    #{join_range}
-    #{filter_oids}
-    """
-  end
+   """
+   SELECT 
+     t.oid, t.typname, t.typsend, t.typreceive, t.typoutput, t.typinput, t.typelem,
+     coalesce(r.rngsubtype, 0),
+     null
+   FROM pg_type AS t
+   LEFT JOIN pg_range AS r ON r.rngtypid = t.oid
+   #{filter_oids}
+   """
+ end
 
   @doc false
   @spec build_type_info(binary) :: TypeInfo.t
