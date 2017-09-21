@@ -4,9 +4,19 @@ PostgreSQL driver for Elixir compatible with CockroachDB.
 This fork is identical with the official Postgrex driver with the exception of the bootstrap query.
 
 At the moment, CockroachDB does not support correlated subqueries which is used by the default bootstrap query.
-See this issue for more information: https://github.com/cockroachdb/cockroach/issues/3288
+Learn more: [Github Issue](https://github.com/cockroachdb/cockroach/issues/3288)
 
 Documentation: http://hexdocs.pm/postgrex_cdb/
+
+## Installation
+
+To use this package, add the following in your deps
+
+```elixir
+def deps do
+  [{:postgrex, "~> 0.13", hex: :postgrex_cdb, override: true}]
+end
+```
 
 ## Example
 
