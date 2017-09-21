@@ -9,7 +9,7 @@ defmodule Postgrex.Mixfile do
      elixir: "~> 1.3.4 or ~> 1.4",
      deps: deps(),
      name: "Postgrex",
-     source_url: "https://github.com/elixir-ecto/postgrex",
+     source_url: "https://github.com/jumpn/postgrex",
      docs: [source_ref: "v#{@version}", main: "readme", extras: ["README.md"]],
      description: description(),
      package: package()]
@@ -30,12 +30,13 @@ defmodule Postgrex.Mixfile do
   end
 
   defp description do
-    "PostgreSQL driver for Elixir."
+    "PostgreSQL driver for Elixir compatible with CockroachDB"
   end
 
   defp package do
-    [maintainers: ["Eric Meadows-Jönsson", "James Fish"],
+    [maintainers: ["Christian Meunier"],
+     name: "postgrex_cdb",
      licenses: ["Apache 2.0"],
-     links: %{"Github" => "https://github.com/elixir-ecto/postgrex"}]
+     links: %{"Github" => "https://github.com/jumpn/postgrex"}]
   end
 end

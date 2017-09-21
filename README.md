@@ -1,10 +1,12 @@
-# Postgrex
+# Postgrex (CockroachDB variant)
 
-[![Build Status](https://travis-ci.org/elixir-ecto/postgrex.svg?branch=master)](https://travis-ci.org/elixir-ecto/postgrex)
+PostgreSQL driver for Elixir compatible with CockroachDB.
+This fork is identical with the official Postgrex driver with the exception of the bootstrap query.
 
-PostgreSQL driver for Elixir.
+At the moment, CockroachDB does not support correlated subqueries which is used by the default bootstrap query.
+See this issue for more information: https://github.com/cockroachdb/cockroach/issues/3288
 
-Documentation: http://hexdocs.pm/postgrex/
+Documentation: http://hexdocs.pm/postgrex_cdb/
 
 ## Example
 
