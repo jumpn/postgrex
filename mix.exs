@@ -11,7 +11,7 @@ defmodule Postgrex.Mixfile do
      name: "Postgrex",
      source_url: "https://github.com/jumpn/postgrex",
      preferred_cli_env: ["docs": :docs, "hex.publish": :docs],
-     docs: [source_ref: "v#{@version}", main: "readme", extras: ["README.md"]],
+     docs: [source_ref: "cdb_v#{@version}", main: "readme", extras: ["README.md"]],
      description: description(),
      package: package()]
   end
