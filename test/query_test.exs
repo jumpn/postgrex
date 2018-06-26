@@ -72,6 +72,24 @@ defmodule QueryTest do
     assert [[[[0]]]] = query("SELECT ARRAY[ARRAY[0]]", [])
   end
 
+  test "decode array domain", context do
+    assert [[[1.0, 2.0, 3.0]]] =
+           query("SELECT ARRAY[1, 2, 3]::floats_domain", [])
+
+    assert [[[%Postgrex.Point{x: 1.0, y: 1.0}, %Postgrex.Point{x: 2.0, y: 2.0}, %Postgrex.Point{x: 3.0, y: 3.0}]]] =
+           query("SELECT ARRAY[point '1,1', point '2,2', point '3,3']::points_domain", [])
+  end
+
+  test "encode array domain", context do
+    floats = [1.0, 2.0, 3.0]
+    floats_string = "{1,2,3}"
+    assert [[^floats_string]] = query("SELECT $1::floats_domain::text", [floats])
+
+    points = [%Postgrex.Point{x: 1.0, y: 1.0}, %Postgrex.Point{x: 2.0, y: 2.0}, %Postgrex.Point{x: 3.0, y: 3.0}]
+    points_string = "{\"(1,1)\",\"(2,2)\",\"(3,3)\"}"
+    assert [[^points_string]] = query("SELECT $1::points_domain::text", [points])
+  end
+
   test "decode time", context do
     assert [[%Postgrex.Time{hour: 0, min: 0, sec: 0, usec: 0}]] =
            query("SELECT time '00:00:00'", [])
@@ -226,8 +244,9 @@ defmodule QueryTest do
     p1 = %Postgrex.Point{x: 0.0, y: 0.0}
     p2 = %Postgrex.Point{x: 1.0, y: 3.0}
     p3 = %Postgrex.Point{x: -4.0, y: 3.14}
-    path = %Postgrex.Path{points: [p1, p2, p3], open: false}
+    path = %Postgrex.Path{points: [p1, p2, p3], open: true}
     assert [[path]] == query("SELECT '[(0.0,0.0),(1.0,3.0),(-4.0,3.14)]'::path", [])
+    assert [[%{path | open: false}]] == query("SELECT '((0.0,0.0),(1.0,3.0),(-4.0,3.14))'::path", [])
     assert %ArgumentError{} = catch_error(query("SELECT $1::path", [1.0]))
     bad_path = %Postgrex.Path{points: "foo", open: false}
     assert %ArgumentError{} = catch_error(query("SELECT $1::path", [bad_path]))
@@ -313,6 +332,10 @@ defmodule QueryTest do
            query("SELECT '(,2014-12-31)'::daterange", [])
     assert [[%Postgrex.Range{lower: %Postgrex.Date{year: 2014, month: 1, day: 2}, upper: nil}]] =
            query("SELECT '(2014-1-1,]'::daterange", [])
+    assert [[%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}]] =
+           query("SELECT '(,)'::daterange", [])
+    assert [[%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}]] =
+           query("SELECT '[,]'::daterange", [])
   end
 
   @tag min_pg_version: "9.0"
@@ -358,12 +381,13 @@ defmodule QueryTest do
 
   @tag min_pg_version: "9.0"
   test "hstore copies binaries by default", context do
-    text = "hello world"
+    # For OTP 20+ refc binaries up to 64 bytes might be copied during a GC
+    text = String.duplicate("hello world", 6)
     assert [[bin]] = query("SELECT $1::text", [text])
     assert :binary.referenced_byte_size(bin) == byte_size(text)
 
-    assert [[%{"hello" => world}]] = query("SELECT $1::hstore", [%{"hello" => "world"}])
-    assert :binary.referenced_byte_size(world) == byte_size("world")
+    assert [[%{"hello" => value}]] = query("SELECT $1::hstore", [%{"hello" => text}])
+    assert :binary.referenced_byte_size(value) == byte_size(text)
   end
 
   test "decode bit string", context do
@@ -602,6 +626,10 @@ defmodule QueryTest do
            query("SELECT $1::int4range", [%Postgrex.Range{lower: 3, upper: nil, lower_inclusive: true, upper_inclusive: true}])
     assert [[%Postgrex.Range{lower: 4, upper: 5, lower_inclusive: true, upper_inclusive: false}]] =
            query("SELECT $1::int4range", [%Postgrex.Range{lower: 3, upper: 5, lower_inclusive: false, upper_inclusive: false}])
+    assert [[%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}]] =
+           query("SELECT $1::int4range", [%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}])
+    assert [[%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}]] =
+           query("SELECT $1::int4range", [%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: true, upper_inclusive: true}])
 
     assert [[%Postgrex.Range{lower: 1, upper: 4, lower_inclusive: true, upper_inclusive: false}]] =
            query("SELECT $1::int8range", [%Postgrex.Range{lower: 1, upper: 3, lower_inclusive: true, upper_inclusive: true}])
@@ -615,6 +643,10 @@ defmodule QueryTest do
            query("SELECT $1::daterange", [%Postgrex.Range{lower: nil, upper: %Postgrex.Date{year: 2014, month: 12, day: 31}}])
     assert [[%Postgrex.Range{lower: %Postgrex.Date{year: 2014, month: 1, day: 1}, upper: nil}]] =
            query("SELECT $1::daterange", [%Postgrex.Range{lower: %Postgrex.Date{year: 2014, month: 1, day: 1}, upper: nil}])
+    assert [[%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}]] =
+           query("SELECT $1::daterange", [%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}])
+    assert [[%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: false, upper_inclusive: false}]] =
+           query("SELECT $1::daterange", [%Postgrex.Range{lower: nil, upper: nil, lower_inclusive: true, upper_inclusive: true}])
   end
 
   @tag min_pg_version: "9.2"

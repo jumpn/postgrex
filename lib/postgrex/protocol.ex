@@ -51,8 +51,30 @@ defmodule Postgrex.Protocol do
     {:ok, state} |
     {:error, Postgrex.Error.t | %DBConnection.ConnectionError{}}
   def connect(opts) do
-    host       = Keyword.fetch!(opts, :hostname) |> to_charlist
-    port       = opts[:port] || 5432
+    port = opts[:port] || 5432
+
+    {host, port} =
+      case Keyword.fetch(opts, :socket) do
+        {:ok, file} ->
+          {{:local, file}, 0}
+
+        :error ->
+          case Keyword.fetch(opts, :socket_dir) do
+            {:ok, dir} ->
+              {{:local, "#{dir}/.s.PGSQL.#{port}"}, 0}
+
+            :error ->
+              case Keyword.fetch(opts, :hostname) do
+                {:ok, hostname} ->
+                  {to_charlist(hostname), port}
+
+                :error ->
+                  raise ArgumentError,
+                        "expected :hostname, :socket_dir, or :socket to be given"
+              end
+          end
+      end
+
     timeout    = opts[:timeout] || @timeout
     sock_opts  = [send_timeout: timeout] ++ (opts[:socket_options] || [])
     ssl?       = opts[:ssl] || false
@@ -77,6 +99,7 @@ defmodule Postgrex.Protocol do
     status = %{opts: opts, types_mod: types_mod, types_key: types_key,
                types_lock: nil, prepare: prepare, ssl: ssl?}
     connect_timeout = Keyword.get(opts, :connect_timeout, timeout)
+
     case connect(host, port, sock_opts ++ @sock_opts, connect_timeout, s) do
       {:ok, s}            -> handshake(s, status)
       {:error, _} = error -> error
@@ -461,7 +484,13 @@ defmodule Postgrex.Protocol do
         :ok = :inet.setopts(sock, [buffer: buffer])
         {:ok, %{s | sock: {:gen_tcp, sock}}}
       {:error, reason} ->
-        {:error, conn_error(:tcp, "connect (#{host}:#{port})", reason)}
+        case host do
+          {:local, socket_addr} ->
+            {:error, conn_error(:tcp, "connect (#{socket_addr})", reason)}
+          host ->
+            {:error, conn_error(:tcp, "connect (#{host}:#{port})", reason)}
+        end
+
     end
   end
 

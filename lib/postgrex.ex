@@ -33,6 +33,12 @@ defmodule Postgrex do
   ## Options
 
     * `:hostname` - Server hostname (default: PGHOST env variable, then localhost);
+    * `:socket_dir` - Connect to Postgres via UNIX sockets in the given directory;
+      The socket name is derived based on the part. This is the preferred method
+      for configuring sockets and it takes precedence over the hostname. If you are
+      connecting to a socket outside of the Postgres convention, use `:socket` instead;
+    * `:socket` - Connect to Postgres via UNIX sockets in the given path.
+      This option takes precedence over the `:hostname` and `:socket_dir`;
     * `:port` - Server port (default: PGPORT env variable, then 5432);
     * `:database` - Database (default: PGDATABASE env variable; otherwise required);
     * `:username` - Username (default: PGUSER env variable, then USER env var);
@@ -46,7 +52,8 @@ defmodule Postgrex do
     (defaults to `:timeout` value);
     * `:ssl` - Set to `true` if ssl should be used (default: `false`);
     * `:ssl_opts` - A list of ssl options, see ssl docs;
-    * `:socket_options` - Options to be given to the underlying socket;
+    * `:socket_options` - Options to be given to the underlying socket
+      (applies to both TCP and UNIX sockets);
     * `:prepare` - How to prepare queries, either `:named` to use named queries
     or `:unnamed` to force unnamed queries (default: `:named`);
     * `:transactions` - Set to `:strict` to error on unexpected transaction
@@ -70,6 +77,11 @@ defmodule Postgrex do
   Run a query after connection has been established:
 
       iex> {:ok, pid} = Postgrex.start_link(after_connect: &Postgrex.query!(&1, "SET TIME ZONE 'UTC';", []))
+      {:ok, #PID<0.69.0>}
+
+  Connect to postgres instance through a unix domain socket
+
+      iex> {:ok, pid} = Postgrex.start_link(socket_dir: "/tmp", database: "postgres")
       {:ok, #PID<0.69.0>}
 
   ## PgBouncer
