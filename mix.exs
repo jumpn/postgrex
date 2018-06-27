@@ -23,14 +23,14 @@ defmodule Postgrex.Mixfile do
     [
       applications: [:logger, :db_connection, :decimal, :crypto],
       mod: {Postgrex.App, []},
-      env: [type_server_reap_after: 3 * 60_000, json_library: Poison]]
+      env: [type_server_reap_after: 3 * 60_000, json_library: Jason]
     ]
   end
 
   defp deps do
     [
       {:ex_doc, "~> 0.14", only: :docs},
-      {:poison, ">= 0.0.0", only: :test},
+      {:jason, "~> 1.0", only: :test},
       {:decimal, "~> 1.0"},
       {:db_connection, "~> 1.1"},
       {:connection, "~> 1.0"}
