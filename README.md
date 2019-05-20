@@ -1,5 +1,8 @@
 # Postgrex (CockroachDB variant)
 
+*This fork is not needed anymore.
+The latest version of postgrex (0.14.3) is compatible with CockroachDB v19.1*
+
 PostgreSQL driver for Elixir compatible with CockroachDB.
 This fork is identical with the official Postgrex driver with the exception of the bootstrap query.
 
